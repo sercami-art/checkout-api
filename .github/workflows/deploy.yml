@@ -1,0 +1,29 @@
+# The deploy pipeline for checkout-api.
+#
+# Present so that the estate can distinguish "this service was not deployed" from
+# "nothing here knows how this service is deployed". Both are called "no workflow
+# runs" by a naive reading, and only the first is evidence about an incident.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: python3 -m py_compile app/checkout_api.py
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record the release
+        run: |
+          echo "Deploying checkout-api ${GITHUB_SHA::8} to lab"
+          echo "release=checkout-api@1.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_STEP_SUMMARY"
