@@ -325,6 +325,19 @@ async def checkout() -> JSONResponse:
     """The business endpoint. One request, three layers, in order."""
     # Injected latency, before anything else, so it shows up as this service
     # being slow rather than as a dependency being slow.
+    delay = float(fault("latency_seconds", "0") or 0)
+    if delay:
+        await asyncio.sleep(delay)
+
+    # Injected error rate — the "the deploy itself is broken" scenario, where no
+    # dependency is at fault and the correct answer is the application layer.
+    rate = float(fault("error_rate", "0") or 0)
+    if rate and random.random() < rate:
+        log.error("checkout failed: injected application fault (release %s)", VERSION)
+        return JSONResponse(
+            {"error": "internal", "layer": "application", "version": VERSION}, status_code=500
+        )
+
     steps: dict[str, str] = {}
     for name, fn in (
         ("database", check_db),
